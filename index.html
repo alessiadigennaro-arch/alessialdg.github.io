@@ -309,42 +309,65 @@
   </main>
 
   <script>
-    const msg = document.getElementById("message");
-    const counter = document.getElementById("counter");
-    const err = document.getElementById("err");
-    const form = document.getElementById("birdieForm");
+  const msg = document.getElementById("message");
+  const counter = document.getElementById("counter");
+  const err = document.getElementById("err");
+  const form = document.getElementById("birdieForm");
+  const statusEl = document.getElementById("status");
 
-    function countWords(text){
-      // words = sequences of letters/numbers separated by spaces
-      const trimmed = text.trim();
-      if (!trimmed) return 0;
-      return trimmed.split(/\s+/).filter(Boolean).length;
+  function countWords(text){
+    const trimmed = text.trim();
+    if (!trimmed) return 0;
+    return trimmed.split(/\s+/).filter(Boolean).length;
+  }
+
+  function update(){
+    const chars = msg.value.length;
+    const words = countWords(msg.value);
+    counter.textContent = `${chars}/80 • ${words}/15 words`;
+
+    const ok = chars > 0 && words <= 15;
+    err.classList.toggle("show", !ok && chars > 0);
+  }
+
+  msg.addEventListener("input", update);
+  update();
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const chars = msg.value.trim().length;
+    const words = countWords(msg.value);
+
+    if (chars === 0 || words > 15){
+      err.classList.add("show");
+      msg.focus();
+      return;
     }
 
-    function update(){
-      const chars = msg.value.length;
-      const words = countWords(msg.value);
-      counter.textContent = `${chars}/80 • ${words}/15 words`;
+    err.classList.remove("show");
+    statusEl.textContent = "Sending…";
 
-      // Live validity: required and <=15 words and <=80 chars (maxlength handles chars)
-      const ok = chars > 0 && words <= 15;
-      err.classList.toggle("show", !ok && chars > 0); // show when they typed but invalid
-    }
+    try{
+      const formData = new FormData(form);
 
-    msg.addEventListener("input", update);
-    update();
+      const res = await fetch(form.action, {
+        method: "POST",
+        body: formData,
+        headers: { "Accept": "application/json" }
+      });
 
-    form.addEventListener("submit", (e) => {
-      const chars = msg.value.trim().length;
-      const words = countWords(msg.value);
-
-      // required + word limit
-      if (chars === 0 || words > 15){
-        e.preventDefault();
-        err.classList.add("show");
-        msg.focus();
+      if (res.ok){
+        statusEl.textContent = "Sent! 🐤";
+        form.reset();
+        update();
+      } else {
+        statusEl.textContent = "Hmm… something went wrong. Try again.";
       }
-    });
-  </script>
+    } catch (err){
+      statusEl.textContent = "Network error. Please try again.";
+    }
+  });
+</script>
 </body>
 </html>
